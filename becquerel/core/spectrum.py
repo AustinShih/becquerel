@@ -6,6 +6,7 @@ from copy import deepcopy
 import datetime
 import numpy as np
 from uncertainties import UFloat, unumpy
+import matplotlib.pyplot as plt
 from .. import parsers
 from .utils import handle_uncs, handle_datetime, bin_centers_from_edges
 
@@ -756,6 +757,16 @@ class Spectrum(object):
                   'livetime': self.livetime}
         obj = Spectrum(**kwargs)
         return obj
+
+    def plot(self, ax=None):
+        if ax is None:
+            _, ax = plt.subplots()
+        ax.plot(self.energies_kev,
+                self.cps_vals,
+                linestyle='steps-mid')
+        ax.set_xlabel('Energy [keV]')
+        ax.set_ylabel('CPS')
+        return ax
 
 
 def _get_file_object(infilename):
