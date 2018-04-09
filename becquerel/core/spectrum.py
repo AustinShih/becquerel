@@ -9,6 +9,18 @@ from uncertainties import UFloat, unumpy
 import matplotlib.pyplot as plt
 from .. import parsers
 from .utils import handle_uncs, handle_datetime, bin_centers_from_edges
+from .rebin import rebin
+
+
+def bin_edges_and_heights_to_steps(bin_edges, heights):
+    assert len(bin_edges) == len(heights) + 1
+    x = np.zeros(len(bin_edges) * 2)
+    y = np.zeros_like(x)
+    x[::2] = bin_edges.astype(float)
+    x[1::2] = bin_edges.astype(float)
+    y[1:-1:2] = heights.astype(float)
+    y[2:-1:2] = heights.astype(float)
+    return x, y
 
 
 class SpectrumError(Exception):
@@ -795,6 +807,54 @@ class Spectrum(object):
         elif self.infilename is not None:
             ax.set_title(self.infilename)
         return ax
+
+    def rebin(self, out_edges, method="interpolation", slopes=None):
+        """
+        Spectra rebining via deterministic or stochastic methods.
+
+        Args:
+            out_edges (np.ndarray): an array of the output bin edges
+                [num_channels_out]
+            method (str): rebinning method
+                "interpolation"
+                    Deterministic interpolation
+                "listmode"
+                    Stochastic rebinning via conversion to listmode of energies
+            slopes (np.ndarray|None): (optional) an array of input bin slopes
+                for quadratic interpolation
+                (only applies for "interpolation" method)
+                [len(spectrum) + 1]
+
+        Raises:
+            AssertionError: for bad input arguments
+
+        Returns:
+            A new Spectrum object with the rebinned data.
+        """
+        # TODO @jccurtis handle this differently?
+        if self.bin_edges_kev is None:
+            raise SpectrumError('Cannot rebin spectrum without energy '
+                                'calibration')
+        else:
+            in_edges = self.bin_edges_kev
+        if self.counts is None:
+            key = 'cps'
+        else:
+            key = 'counts'
+        in_spec = getattr(self, '{}_vals'.format(key))
+        # TODO propogate the uncertainties?
+        in_spec_uncs = getattr(self, '{}_uncs'.format(key))
+        if method == 'listmode' and key == 'cps':
+            raise SpectrumError('Cannot rebin via `listmode` method without '
+                                '`counts` data')
+        out_spec = rebin(in_spec, in_edges, out_edges, method=method,
+                         slopes=slopes)
+        kwargs = {key: out_spec,
+                  'bin_edges_kev': out_edges,
+                  'input_file_object': self._infileobject,
+                  'livetime': self.livetime}
+        obj = Spectrum(**kwargs)
+        return obj
 
 
 def _get_file_object(infilename):
