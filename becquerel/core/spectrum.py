@@ -758,14 +758,41 @@ class Spectrum(object):
         obj = Spectrum(**kwargs)
         return obj
 
-    def plot(self, ax=None):
+    def plot(self, ax=None, yscale=None, color=None, title=None,
+             x_data='keV', y_data='cps', linewidth=1., figsize=None,
+             label=None):
         if ax is None:
-            _, ax = plt.subplots()
-        ax.plot(self.energies_kev,
-                self.cps_vals,
-                linestyle='steps-mid')
-        ax.set_xlabel('Energy [keV]')
-        ax.set_ylabel('CPS')
+            _, ax = plt.subplots(figsize=figsize)
+        if x_data.lower() == 'kev':
+            x = self.energies_kev
+            xlabel = 'Energy (keV)'
+        elif x_data.lower() in ('channel', 'channels'):
+            x = self.channels
+            xlabel = 'Channel'
+        else:
+            raise SpectrumError('Unknown x_data: {}'.format(x_data))
+        if y_data.lower() == 'cps':
+            y = self.cps_vals
+            ylabel = 'CPS'
+        elif y_data.lower() in ('counts', 'count'):
+            y = self.counts_vals
+            ylabel = 'Counts'
+        else:
+            raise SpectrumError('Unknown y_data: {}'.format(y_data))
+        ax.plot(x,
+                y,
+                linestyle='steps-mid',
+                color=color,
+                linewidth=linewidth,
+                label=label)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        if yscale is not None:
+            ax.set_yscale(yscale)
+        if title is not None:
+            ax.set_title(title)
+        elif self.infilename is not None:
+            ax.set_title(self.infilename)
         return ax
 
 
